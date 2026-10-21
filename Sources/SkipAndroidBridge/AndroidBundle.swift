@@ -4,6 +4,11 @@ import Foundation
 #if os(Android) || ROBOLECTRIC
 import SwiftJNI // for isJNIInitialized (no-JVM fallback in the bundle path)
 #endif
+#if ROBOLECTRIC && os(Linux)
+// swift-corelibs-foundation's Bundle has members typed with CFBundle, which it imports privately;
+// without CoreFoundation visible here they can't be loaded, and Swift refuses to subclass Bundle
+import CoreFoundation
+#endif
 #if os(Android) || ROBOLECTRIC || canImport(Darwin)
 
 /// Override of native `Bundle` for Android that delegates to our `skip.foundation.Bundle` Kotlin object.
@@ -216,13 +221,21 @@ open class AndroidBundle : Foundation.Bundle, @unchecked Sendable {
         super.init(path: Self.backingBundlePath())!
     }
     #elseif ROBOLECTRIC
-    // Foundation's `Bundle(for:)` is a convenience init here, which this subclass does not inherit.
     // The swiftbuild resource accessor looks for `<pkg>_<module>.bundle` in this bundle's resourceURL,
     // so back it with the directory that contains the class's library, as Foundation does.
+    #if canImport(Darwin)
+    // Foundation's `Bundle(for:)` is a convenience init here, which this subclass does not inherit.
     public init(for aClass: AnyClass) {
         self.bundleAccess = BundleAccess(path: Foundation.Bundle(for: aClass).bundlePath)
         super.init(path: Self.backingBundlePath())!
     }
+    #else
+    // swift-corelibs-foundation declares `Bundle(for:)` as a designated init
+    public override init(for aClass: AnyClass) {
+        self.bundleAccess = BundleAccess(path: Foundation.Bundle(for: aClass).bundlePath)
+        super.init(path: Self.backingBundlePath())!
+    }
+    #endif
     #endif
 
     public static func == (lhs: AndroidBundle, rhs: AndroidBundle) -> Bool {
