@@ -5,6 +5,10 @@ import SkipBridge
 import SkipAndroidBridge
 import SkipAndroidBridgeSamples
 import XCTest
+#if SKIP
+import androidx.compose.runtime.snapshots.Snapshot
+import java.util.concurrent.atomic.AtomicInteger
+#endif
 
 /// Transpiled shims for the natively-compiled Observation test support in
 /// `SkipAndroidBridgeSamples/ObservationSamples.swift`.
@@ -84,4 +88,101 @@ final class ObservationSamplesTests: XCTestCase {
         XCTAssertEqual("", testSupport_observationTrackingIgnoresUntrackedProperty())
         #endif
     }
+
+    // MARK: - JNI gating
+
+    func testReadReachesCompose() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        XCTAssertGreaterThan(composeReads { testSupport_gatingRead() }, 0)
+        #endif
+    }
+
+    func testReadInRunLoopSkipsCompose() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        var failure = "not run"
+        XCTAssertEqual(0, composeReads { failure = testSupport_gatingReadInRunLoop() })
+        XCTAssertEqual("", failure)
+        #endif
+    }
+
+    func testWriteToNeverReadPropertySkipsCompose() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        XCTAssertEqual(0, composeWrites { testSupport_gatingWrite() })
+        #endif
+    }
+
+    func testReadInRunLoopDoesNotTrackProperty() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        XCTAssertEqual("", testSupport_gatingReadInRunLoop())
+        XCTAssertEqual(0, composeWrites { testSupport_gatingWrite() })
+        #endif
+    }
+
+    func testWriteToReadPropertyReachesCompose() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        testSupport_gatingRead()
+        XCTAssertEqual(1, composeWrites { testSupport_gatingWrite() })
+        #endif
+    }
+
+    func testWriteInRunLoopToReadPropertyReachesCompose() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        testSupport_gatingRead()
+        var failure = "not run"
+        XCTAssertEqual(1, composeWrites { failure = testSupport_gatingWriteInRunLoop() })
+        XCTAssertEqual("", failure)
+        #endif
+    }
+
+    func testBackgroundWriteToReadPropertyReachesCompose() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        testSupport_gatingReset()
+        testSupport_gatingRead()
+        XCTAssertEqual(1, composeWrites { testSupport_gatingWriteOnBackgroundThread() })
+        #endif
+    }
+
+    func testGatingBenchmark() throws {
+        #if !SKIP
+        throw XCTSkip("bridged Observation only runs on Android/Robolectric")
+        #else
+        print("OBSERVATION GATING BENCHMARK: \(testSupport_gatingBenchmark())")
+        #endif
+    }
+
+    #if SKIP
+    private func composeReads(_ block: () -> Void) -> Int {
+        let reads = AtomicInteger(0)
+        Snapshot.observe(readObserver: { _ in reads.incrementAndGet() }, writeObserver: nil, block: block)
+        return reads.get()
+    }
+
+    private func composeWrites(_ block: () -> Void) -> Int {
+        let writes = AtomicInteger(0)
+        let handle = Snapshot.registerGlobalWriteObserver { _ in writes.incrementAndGet() }
+        block()
+        handle.dispose()
+        return writes.get()
+    }
+    #endif
 }

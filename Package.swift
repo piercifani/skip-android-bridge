@@ -14,7 +14,8 @@ let package = Package(
         .package(url: "https://github.com/skiptools/skip-foundation.git", from: "1.4.7"),
         .package(url: "https://github.com/skiptools/swift-jni.git", "0.5.0"..<"2.0.0"),
         .package(url: "https://github.com/skiptools/skip-bridge.git", "0.17.3"..<"2.0.0"),
-        .package(url: "https://github.com/skiptools/swift-android-native.git", from: "1.5.1")
+        .package(url: "https://github.com/skiptools/swift-android-native.git", from: "1.5.1"),
+        .package(url: "https://github.com/skiptools/skip-model.git", from: "1.7.0"),
     ],
     targets: [
         .target(name: "SkipAndroidBridge", dependencies: [
@@ -34,6 +35,7 @@ let package = Package(
         ], resources: [.process("Resources")], plugins: [.plugin(name: "skipstone", package: "skip")]),
         .testTarget(name: "SkipAndroidBridgeSamplesTests", dependencies: [
             "SkipAndroidBridgeSamples",
+            .product(name: "SkipModel", package: "skip-model"),
             .product(name: "SkipTest", package: "skip"),
         ], resources: [.process("Resources")], plugins: [.plugin(name: "skipstone", package: "skip")]),
     ]
