@@ -14,8 +14,7 @@ let package = Package(
         .package(url: "https://github.com/skiptools/skip-foundation.git", from: "1.4.7"),
         .package(url: "https://github.com/skiptools/swift-jni.git", "0.5.0"..<"2.0.0"),
         .package(url: "https://github.com/skiptools/skip-bridge.git", "0.17.3"..<"2.0.0"),
-        .package(url: "https://github.com/skiptools/swift-android-native.git", from: "1.5.1"),
-        .package(url: "https://github.com/skiptools/skip-model.git", from: "1.7.0"),
+        .package(url: "https://github.com/skiptools/swift-android-native.git", from: "1.5.1")
     ],
     targets: [
         .target(name: "SkipAndroidBridge", dependencies: [
@@ -35,8 +34,15 @@ let package = Package(
         ], resources: [.process("Resources")], plugins: [.plugin(name: "skipstone", package: "skip")]),
         .testTarget(name: "SkipAndroidBridgeSamplesTests", dependencies: [
             "SkipAndroidBridgeSamples",
-            .product(name: "SkipModel", package: "skip-model"),
             .product(name: "SkipTest", package: "skip"),
         ], resources: [.process("Resources")], plugins: [.plugin(name: "skipstone", package: "skip")]),
     ]
 )
+
+// The Observation tests run against the real Kotlin `MutableStateBacking`. They are transpiled on
+// the host, and the Android build compiles no test targets, so it never generates SkipModel's
+// skipstone output that the test target's plugin would expect.
+if (Context.environment["TARGET_OS_ANDROID"] ?? "0") == "0" {
+    package.dependencies += [.package(url: "https://github.com/skiptools/skip-model.git", from: "1.7.0")]
+    package.targets.first(where: { $0.name == "SkipAndroidBridgeSamplesTests" })?.dependencies += [.product(name: "SkipModel", package: "skip-model")]
+}
